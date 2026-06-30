@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Health Monitor</title>
+    <title>My Health Monitor (Patient)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Socket.IO library for real-time connection -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    <!-- QR Code Generator Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     
     <style>
         body { background-color: #0f172a; color: #f8fafc; } 
@@ -24,17 +26,301 @@
 </head>
 <body class="min-h-screen p-6 sm:p-10 font-sans flex flex-col items-center">
 
-    <!-- Top Navigation Bar -->
-    <header class="w-full max-w-2xl flex justify-between items-center border-b border-slate-800 pb-4 mb-8">
-        <div>
-            <h1 class="text-3xl font-bold text-white">❤️ My Health Monitor</h1>
-            <p class="text-slate-400 mt-1">ID: <span class="font-bold text-white">PT-208</span></p>
+    <!-- ========================================== -->
+    <!-- 1. LOGIN & ACTIVATION SCREEN               -->
+    <!-- ========================================== -->
+    <div id="login-state" class="w-full max-w-md mt-10 bg-slate-900 border border-slate-700 rounded-3xl p-8 shadow-2xl">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-white mb-2">❤️ Wearable Setup</h1>
+            <p class="text-slate-400">Activate your health monitor to begin.</p>
         </div>
-        <div class="flex items-center space-x-3 bg-slate-900 px-4 py-2 rounded-full border border-slate-700">
-            <span class="relative flex h-3 w-3">
-              <span id="ping-dot" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span id="solid-dot" class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-            </span>
+
+        <div class="space-y-5">
+            <div>
+                <label class="block text-slate-400 text-sm font-bold mb-2">Patient ID (Must match Watch)</label>
+                <input type="text" id="patient-id" placeholder="e.g., PT-2005" class="w-full bg-slate-800 text-white rounded-xl p-4 border border-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none uppercase font-mono">
+            </div>
+            <div>
+                <label class="block text-slate-400 text-sm font-bold mb-2">Full Name</label>
+                <input type="text" id="patient-name" placeholder="John Doe" class="w-full bg-slate-800 text-white rounded-xl p-4 border border-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-slate-400 text-sm font-bold mb-2">Mobile Number</label>
+                <input type="text" id="patient-mobile" placeholder="1234567890" class="w-full bg-slate-800 text-white rounded-xl p-4 border border-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none">
+            </div>
+            <button onclick="activatePatient()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl transition shadow-lg mt-4 text-lg">
+                Activate & Start Monitoring
+            </button>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 2. MAIN ACTIVE DASHBOARD (Hidden at start) -->
+    <!-- ========================================== -->
+    <main id="main-app" class="hidden w-full max-w-4xl">
+        <!-- Top Navigation Bar -->
+        <header class="flex justify-between items-center border-b border-slate-800 pb-4 mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-white">❤️ My Health Monitor</h1>
+                <p class="text-slate-400 mt-1">ID: <span id="display-pid" class="font-bold text-white"></span></p>
+            </div>
+            <div class="flex items-center space-x-3 bg-slate-900 px-4 py-2 rounded-full border border-slate-700">
+                <span class="relative flex h-3 w-3">
+                  <span id="ping-dot" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span id="solid-dot" class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
+                <span id="connection-status" class="text-emerald-400 font-semibold text-sm tracking-wider">SYSTEM ACTIVE</span>
+            </div>
+        </header>
+
+        <!-- Idle Status & QR Code Grid -->
+        <div id="idle-state" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- Left Side: Health Status -->
+            <div class="md:col-span-2 bg-slate-900/80 rounded-3xl p-10 border border-slate-800 text-center shadow-xl">
+                <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-800 mb-6">
+                    <svg class="w-10 h-10 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                </div>
+                <h2 class="text-2xl font-semibold text-white mb-2">Your heart looks great.</h2>
+                <p class="text-slate-400">Your wearable is continuously analyzing your rhythm.</p>
+
+                <!-- LIVE EXACT GPS DISPLAY -->
+                <div class="mt-6 p-4 bg-slate-800/80 rounded-xl border border-slate-700 inline-block shadow-inner">
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Live Location (Shared in Emergency)</p>
+                    <div class="flex flex-col items-center justify-center space-y-1">
+                        <div class="flex items-center space-x-2">
+                            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            <p id="live-gps-display" class="text-yellow-400 font-mono text-lg animate-pulse">Acquiring GPS...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DEV SOS Button -->
+                <div class="mt-8 pt-6 border-t border-slate-800">
+                    <button onclick="triggerRealLocationSOS()" class="bg-red-950/60 hover:bg-red-900/80 border border-red-800 text-red-300 rounded-xl px-6 py-3 transition font-bold shadow-lg">
+                        [Dev Tool] Broadcast Exact Location SOS
+                    </button>
+                    <p class="text-slate-500 text-sm mt-3 px-4">Instantly blasts your real browser coordinates to the Server, Doctor, and Family.</p>
+                </div>
+            </div>
+
+            <!-- Right Side: Family & QR Code -->
+            <div class="bg-slate-900/80 rounded-3xl p-8 border border-slate-800 shadow-xl flex flex-col items-center">
+                <h3 class="text-lg font-bold text-white mb-4 border-b border-slate-700 w-full text-center pb-2">Family Access</h3>
+                
+                <!-- QR Code Box -->
+                <div id="qrcode-container" class="bg-white p-3 rounded-xl shadow-lg mb-4">
+                    <!-- JS will insert QR code here -->
+                </div>
+                <p class="text-xs text-slate-400 text-center mb-6">Scan to link to this device</p>
+                
+                <!-- Connected Family List -->
+                <div class="w-full">
+                    <h4 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">Authorized Viewers:</h4>
+                    <ul id="family-list" class="space-y-3">
+                        <li id="no-family-msg" class="text-slate-500 italic text-sm text-center">No family connected yet.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- 3. EMERGENCY ALERT STATE                   -->
+        <!-- ========================================== -->
+        <div id="alert-state" class="hidden">
+            <!-- Large, highly readable alert box for the patient -->
+            <div class="bg-red-950 border-2 border-red-500 rounded-3xl p-8 sm:p-12 patient-alert-pulse shadow-2xl text-center">
+                
+                <h2 class="text-4xl sm:text-5xl font-extrabold text-red-500 tracking-tight mb-4">HELP IS ON THE WAY</h2>
+                <p class="text-red-200 text-xl sm:text-2xl mb-10">We detected an anomaly. Your medical team and family have been notified.</p>
+                
+                <!-- Live Ambulance Status -->
+                <div class="bg-black/40 rounded-2xl p-6 border border-red-900/50 mb-10">
+                    <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Emergency Status</h3>
+                    <div id="ambulance-status" class="flex flex-col items-center justify-center text-yellow-400 animate-pulse">
+                        <svg id="ambulance-icon" class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span id="ambulance-text" class="text-2xl font-bold text-center">Coordinating with Hospital...</span>
+                    </div>
+                </div>
+
+                <!-- Critical Instructions Checklist -->
+                <div class="text-left bg-slate-900 rounded-2xl p-6 border border-slate-700">
+                    <h3 class="text-lg font-bold text-white mb-4 border-b border-slate-700 pb-2">🚨 What you need to do right now:</h3>
+                    <ul class="space-y-4 text-lg text-slate-300">
+                        <li class="flex items-start">
+                            <span class="flex-shrink-0 h-8 w-8 flex items-center justify-center rounded-full bg-slate-800 text-white font-bold mr-4">1</span>
+                            <span><strong>Sit or lie down</strong> in a comfortable position immediately. Do not walk around.</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="flex-shrink-0 h-8 w-8 flex items-center justify-center rounded-full bg-slate-800 text-white font-bold mr-4">2</span>
+                            <span><strong>Unlock your front door</strong> so paramedics can enter quickly.</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="flex-shrink-0 h-8 w-8 flex items-center justify-center rounded-full bg-slate-800 text-white font-bold mr-4">3</span>
+                            <span><strong>Stay calm and breathe.</strong> Do NOT attempt to drive yourself to the hospital.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let socket;
+        let currentPatientId = "";
+        let currentRealLocation = "20.7002, 77.0082"; // Fallback location
+        
+        // Ensure Socket connects, but we WAIT to join a room until they login
+        if (typeof io !== 'undefined') {
+            socket = io('https://stemi-healtcare-ai.onrender.com'); // Linked to your Render Cloud!
+            
+            // Listen for NEW family joining live
+            socket.on('family_connected', (data) => {
+                const list = document.getElementById('family-list');
+                const noMsg = document.getElementById('no-family-msg');
+                if (noMsg) noMsg.remove();
+                
+                const li = document.createElement('li');
+                li.className = "bg-slate-800 rounded-lg p-3 text-emerald-400 font-medium flex justify-between items-center";
+                li.innerHTML = `<span>✓ ${data.name}</span> <span class="text-xs text-slate-500">${data.mobile}</span>`;
+                list.appendChild(li);
+            });
+
+            // Listen for EXISTING family from database
+            socket.on('existing_family', (familyList) => {
+                const list = document.getElementById('family-list');
+                const noMsg = document.getElementById('no-family-msg');
+                
+                if (familyList.length > 0) {
+                    if (noMsg) noMsg.remove();
+                    list.innerHTML = ''; 
+                    
+                    familyList.forEach(member => {
+                        const li = document.createElement('li');
+                        li.className = "bg-slate-800 rounded-lg p-3 text-emerald-400 font-medium flex justify-between items-center";
+                        li.innerHTML = `<span>✓ ${member[0]}</span> <span class="text-xs text-slate-500">${member[1]}</span>`;
+                        list.appendChild(li);
+                    });
+                }
+            });
+
+            // Listen for STEMI alert
+            socket.on('stemi_alert', (data) => {
+                document.getElementById('idle-state').classList.add('hidden');
+                document.getElementById('alert-state').classList.remove('hidden');
+                let audio = new Audio('https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg');
+                audio.play().catch(e => console.log(e));
+            });
+
+            // Listen for Ambulance Dispatch
+            socket.on('ambulance_dispatched', () => {
+                const statusDiv = document.getElementById('ambulance-status');
+                const icon = document.getElementById('ambulance-icon');
+                const text = document.getElementById('ambulance-text');
+
+                statusDiv.classList.replace('text-yellow-400', 'text-emerald-400');
+                statusDiv.classList.remove('animate-pulse');
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 17.5A2.5 2.5 0 0116.5 20h-9A2.5 2.5 0 015 17.5m14 0V9a2 2 0 00-2-2h-3.5L12 4.5M5 17.5V11a2 2 0 012-2h1.5l1.5-2.5m-5 11a2.5 2.5 0 01-2.5-2.5V11"></path>';
+                text.innerText = "AMBULANCE EN ROUTE!";
+            });
+        }
+
+        // ==========================================
+        // LOGIN & QR GENERATION
+        // ==========================================
+        function activatePatient() {
+            const pId = document.getElementById('patient-id').value.toUpperCase().trim();
+            const pName = document.getElementById('patient-name').value.trim();
+            const pMobile = document.getElementById('patient-mobile').value.trim();
+
+            if(!pId || !pName || !pMobile) {
+                alert("Please fill in all details to activate.");
+                return;
+            }
+
+            currentPatientId = pId; // Store it dynamically so the SOS trigger uses it!
+
+            // 1. Tell the server to register us in the database!
+            if(socket) {
+                socket.emit('join_system', {
+                    room: 'room_' + pId,
+                    role: 'patient',
+                    patient_id: pId,
+                    name: pName,
+                    mobile: pMobile
+                });
+            }
+
+            // 2. Update UI
+            document.getElementById('login-state').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            document.getElementById('display-pid').innerText = pId;
+
+            // 3. Generate QR Code
+            const qrContainer = document.getElementById("qrcode-container");
+            qrContainer.innerHTML = ""; 
+            new QRCode(qrContainer, {
+                text: pId, // Family scans this and types it in to connect!
+                width: 140,
+                height: 140,
+                colorDark : "#0f172a",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+            
+            startGPS();
+        }
+
+        // ==========================================
+        // GPS & SOS LOGIC
+        // ==========================================
+        function startGPS() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.watchPosition(
+                    (position) => {
+                        currentRealLocation = `${position.coords.latitude}, ${position.coords.longitude}`;
+                        const gpsDisplay = document.getElementById('live-gps-display');
+                        gpsDisplay.innerText = `${position.coords.latitude.toFixed(5)}°, ${position.coords.longitude.toFixed(5)}°`;
+                        gpsDisplay.classList.replace('text-yellow-400', 'text-emerald-400');
+                        gpsDisplay.classList.remove('animate-pulse');
+                    },
+                    (error) => {
+                        document.getElementById('live-gps-display').innerText = "20.7002°, 77.0082° (Simulated - Permission Denied)";
+                        document.getElementById('live-gps-display').classList.replace('animate-pulse', 'text-blue-400');
+                    },
+                    { enableHighAccuracy: true }
+                );
+            }
+        }
+
+        function triggerRealLocationSOS() {
+            if (currentRealLocation.includes("Acquiring") || currentRealLocation.includes("Denied")) {
+                alert("Please allow Location Access in your browser before simulating the SOS!");
+                return;
+            }
+
+            // Act as the Watch: Send the real location payload directly to our Python server
+            const payload = {
+                "patient_id": currentPatientId, // Dynamically uses the logged-in ID!
+                "gps_location": currentRealLocation, 
+                "danger_score": 0.95,
+                "token": "my-secret-watch-token" // Required for security!
+            };
+
+            fetch('https://stemi-healtcare-ai.onrender.com/emergency_dispatch', { // Linked to your Render Cloud!
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(() => {
+                console.log("SOS Fired!");
+            }).catch(error => {
+                console.error("Error sending SOS:", error);
+                alert("Failed to reach server. Make sure your Python Server is running!");
+            });
+        }
+    </script>
+</body>
+    </html>            </span>
             <span id="connection-status" class="text-emerald-400 font-semibold text-sm tracking-wider">SYSTEM ACTIVE</span>
         </div>
     </header>
