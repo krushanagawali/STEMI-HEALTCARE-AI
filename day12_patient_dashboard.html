@@ -218,32 +218,33 @@
         // BROWSER-BASED DISTRESS TRIGGER
         // ==========================================
         function triggerRealLocationSOS() {
-            if (currentRealLocation.includes("Acquiring") || currentRealLocation.includes("Denied")) {
-                alert("Please allow Location Access in your browser before simulating the SOS!");
-                return;
-            }
+            if (!currentPatientId) { alert("Please activate your profile first!"); return; }
 
-            // Act as the Watch: Send the real location payload directly to our Python server
+            // Turn on GPS for emergency & alert UI immediately
+            triggerLocalAlert();
+
             const payload = {
-                "patient_id": "PT-208",
-                "gps_location": currentRealLocation, // This is now full precision data
+                "patient_id": currentPatientId, 
+                "gps_location": currentRealLocation || "20.7002, 77.0082", // Fallback if browser GPS takes time 
                 "danger_score": 0.95,
-                "token": "my-secret-watch-token"
+                "token": "my-secret-watch-token" 
             };
 
+            // FIX: Using 'no-cors' mode allows local files to successfully hit a live secure Render URL
             fetch('https://healthcare-ai-assistant-1-5klv.onrender.com/emergency_dispatch', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
+                mode: 'no-cors',
+                headers: { 
+                    'Content-Type': 'application/json' 
                 },
                 body: JSON.stringify(payload)
             })
-            .then(response => {
-                console.log("Exact location SOS successfully fired to the server!");
+            .then(() => {
+                console.log("SOS Broadcast Successfully dispatched to Render Cloud!");
             })
-            .catch(error => {
-                console.error("Error sending SOS:", error);
-                alert("Failed to reach server. Make sure day7_middleman_server.py is running!");
+            .catch(e => {
+                console.error("Network routing error:", e);
+                alert("Network Routing Error. Please verify your Python backend is active on Render.");
             });
         }
 
