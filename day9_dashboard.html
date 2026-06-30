@@ -103,7 +103,7 @@
         // Safe check: Prevent crash if the CDN is blocked
         if (typeof io !== 'undefined') {
             // Connect to our Middleman Python Server
-            socket = io('https://healthcare-ai-assistant-1-5klv.onrender.com');
+            socket = io('https://stemi-healtcare-ai.onrender.com');
 
             socket.on('connect', () => {
                 console.log("Connected to Middleman Server successfully!");
