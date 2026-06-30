@@ -167,7 +167,7 @@
         // ==========================================
         if (typeof io !== 'undefined') {
             // Connect to the exact same Python Middleman Server
-            const socket = io('https://healthcare-ai-assistant-1-5klv.onrender.com');
+            const socket = io('https://stemi-healtcare-ai.onrender.com');
 
             socket.on('connect', () => {
                 console.log("Connected to Server!");
@@ -231,7 +231,7 @@
             };
 
             // FIX: Using 'no-cors' mode allows local files to successfully hit a live secure Render URL
-            fetch('https://healthcare-ai-assistant-1-5klv.onrender.com/emergency_dispatch', {
+            fetch('https://stemi-healtcare-ai.onrender.com/emergency_dispatch', {
                 method: 'POST',
                 mode: 'no-cors',
                 headers: { 
