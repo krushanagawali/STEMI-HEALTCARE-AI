@@ -167,7 +167,7 @@
         // ==========================================
         if (typeof io !== 'undefined') {
             // Connect to the exact same Python Middleman Server
-            const socket = io('https://stemi-healtcare-ai.onrender.com');
+            const socket = io('https://healthcare-ai-assistant-1-5klv.onrender.com');
 
             socket.on('connect', () => {
                 console.log("Connected to Server!");
@@ -231,7 +231,7 @@
                 "token": "my-secret-watch-token"
             };
 
-            fetch('https://stemi-healtcare-ai.onrender.com/emergency_dispatch', {
+            fetch('https://healthcare-ai-assistant-1-5klv.onrender.com/emergency_dispatch', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
